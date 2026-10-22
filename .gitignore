@@ -1,0 +1,13 @@
+# Environments and caches
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+
+# Downloaded corpora, audio, model weights and intermediate scores (reproducible from the scripts)
+benchmark/data/
+benchmark/cache/
+benchmark/audio/
+benchmark/models/
+benchmark/logs/

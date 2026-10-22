@@ -1,0 +1,9 @@
+{
+  "ft-noisy-s0-last": "ft-noisy-s0",
+  "ft-mixed-s0-last": "ft-mixed-s0",
+  "ft-noisy-s1": "ce-l6",
+  "ft-clean-s2-last": "ft-clean-s2",
+  "ft-mixed-s2": "ce-l6",
+  "ft-distill-s0-last": "ft-distill-s0",
+  "ft-distill-s2-last": "ft-distill-s2"
+}

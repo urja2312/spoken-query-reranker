@@ -1,0 +1,535 @@
+// Builds the full project report (.docx). Numbers mirror results/results.md and results/sdqa_results.md
+// (3 seeds, Kaggle T4 runs of 11–16 Oct 2026). Run: node build_report.js <figdir> <out.docx>
+const fs = require("fs");
+const {
+  Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, AlignmentType,
+  WidthType, BorderStyle, ShadingType, Footer, PageNumber, LevelFormat, HeadingLevel,
+  TableOfContents, PageBreak,
+} = require("docx");
+
+const [figDir, outPath] = process.argv.slice(2);
+const FONT = "Times New Roman";
+const W = 9026; // A4 content width in DXA with 1" margins
+
+const t = (text, o = {}) => new TextRun({ text, font: o.font || FONT, size: o.size || 24, bold: o.bold, italics: o.italics, color: o.color });
+const runs = (spec) => (Array.isArray(spec) ? spec : [spec]).map((x) => (typeof x === "string" ? t(x) : t(x.t, x)));
+const P = (spec, o = {}) => new Paragraph({
+  children: runs(spec), alignment: o.align || AlignmentType.JUSTIFIED,
+  spacing: { after: o.after ?? 140, before: o.before ?? 0, line: 330 }, keepNext: o.keepNext,
+});
+const H1 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [t(text, { bold: true, size: 32 })], spacing: { before: 0, after: 240 } });
+const H2 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_2, children: [t(text, { bold: true, size: 26 })], spacing: { before: 240, after: 120 }, keepNext: true });
+const H3 = (text) => new Paragraph({ children: [t(text, { bold: true, italics: true })], spacing: { before: 160, after: 80 }, keepNext: true });
+const bullet = (spec) => new Paragraph({ children: runs(spec), numbering: { reference: "bul", level: 0 }, spacing: { after: 70, line: 312 }, alignment: AlignmentType.JUSTIFIED });
+const numbered = (spec, ref = "num") => new Paragraph({ children: runs(spec), numbering: { reference: ref, level: 0 }, spacing: { after: 70, line: 312 }, alignment: AlignmentType.JUSTIFIED });
+const caption = (text) => new Paragraph({ children: [t(text, { size: 20, italics: true })], alignment: AlignmentType.CENTER, spacing: { before: 60, after: 220 } });
+const tcap = (text) => new Paragraph({ children: [t(text, { size: 20, bold: true })], alignment: AlignmentType.CENTER, spacing: { before: 180, after: 80 }, keepNext: true });
+const center = (text, o = {}) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: o.after ?? 120, before: o.before ?? 0 }, children: [t(text, o)] });
+const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
+
+function fig(file, wPx, hPx, cap) {
+  return [
+    new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: 120 },
+      children: [new ImageRun({ type: "png", data: fs.readFileSync(`${figDir}/${file}`), transformation: { width: wPx, height: hPx } })] }),
+    caption(cap),
+  ];
+}
+
+const border = { style: BorderStyle.SINGLE, size: 4, color: "999999" };
+function table(header, rows, widths, o = {}) {
+  const total = widths.reduce((a, b) => a + b, 0);
+  const cell = (txt, i, head) => new TableCell({
+    width: { size: widths[i], type: WidthType.DXA },
+    borders: { top: border, bottom: border, left: border, right: border },
+    shading: head ? { fill: "E8EEF4", type: ShadingType.CLEAR, color: "auto" } : undefined,
+    margins: { top: 40, bottom: 40, left: 80, right: 80 },
+    children: [new Paragraph({ alignment: i === 0 || o.left ? AlignmentType.LEFT : AlignmentType.CENTER,
+      children: [t(String(txt), { size: 19, bold: head })] })],
+  });
+  return new Table({
+    width: { size: total, type: WidthType.DXA }, columnWidths: widths, alignment: AlignmentType.CENTER,
+    rows: [new TableRow({ tableHeader: true, children: header.map((h, i) => cell(h, i, true)) }),
+      ...rows.map((r) => new TableRow({ children: r.map((c, i) => cell(c, i, false)) }))],
+  });
+}
+
+const body = [];
+const add = (...xs) => body.push(...xs.flat());
+
+// ================================================================= front matter
+add(
+  center("NMIMS — Mukesh Patel School of Technology Management & Engineering, Mumbai", { size: 24, bold: true, before: 600 }),
+  center("Department of Artificial Intelligence", { size: 22, after: 600 }),
+  center("MINI PROJECT REPORT", { size: 28, bold: true, after: 300 }),
+  center("Does the Reranker Hear You?", { size: 40, bold: true, after: 160 }),
+  center("Robustness of Neural Retrieval to Spoken Queries and Noise-Aware Training of Cross-Encoder Rerankers for Voice Agents", { size: 26, italics: true, after: 600 }),
+  center("Submitted in partial fulfilment of the requirements of", { size: 22 }),
+  center("Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009)", { size: 22, bold: true }),
+  center("Academic Year 2026–27", { size: 22, after: 600 }),
+  center("Submitted by", { size: 22, italics: true }),
+  center("[Student Name 1] — [Roll No.]", { size: 22, after: 40 }),
+  center("[Student Name 2] — [Roll No.]", { size: 22, after: 40 }),
+  center("[Student Name 3] — [Roll No.]", { size: 22, after: 40 }),
+  center("[Student Name 4] — [Roll No.]", { size: 22, after: 400 }),
+  center("Under the guidance of", { size: 22, italics: true }),
+  center("[Faculty Name], Deep Learning   ·   [Faculty Name], Natural Language Processing", { size: 22 }),
+  pageBreak(),
+);
+
+add(
+  center("CERTIFICATE", { size: 30, bold: true, before: 400, after: 400 }),
+  P("This is to certify that the mini project entitled \"Does the Reranker Hear You? Robustness of Neural Retrieval to Spoken Queries and Noise-Aware Training of Cross-Encoder Rerankers for Voice Agents\" is a bonafide work carried out by [Student Name 1], [Student Name 2], [Student Name 3] and [Student Name 4] in partial fulfilment of the requirements of the courses Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009) during the academic year 2026–27, as a combined project approved by both course faculties."),
+  P(" ", { after: 1200 }),
+  table(["Faculty, Deep Learning", "Faculty, Natural Language Processing"],
+    [["Signature:", "Signature:"], ["Name: [Faculty name]", "Name: [Faculty name]"], ["Date:", "Date:"]], [4513, 4513], { left: true }),
+  pageBreak(),
+);
+
+add(
+  center("ACKNOWLEDGEMENT", { size: 30, bold: true, before: 200, after: 300 }),
+  P("We thank our faculty for the Deep Learning and Natural Language Processing courses for approving this combined project and for their guidance. We thank the authors of BEIR, SD-QA and TyDi-QA for releasing their datasets, the developers of the open-source models and libraries we used (Sentence-Transformers, faster-whisper, BGE, MiniLM), and Kaggle for the free GPU time on which all training and large-scale evaluation was run."),
+  P("[Use of AI tools: describe here, as required by the course GenAI policy, how AI assistants were used in this project — for example, for code review, debugging, drafting and editing. All experimental design decisions, results and their interpretation were checked by the team.]"),
+  pageBreak(),
+);
+
+add(
+  center("ABSTRACT", { size: 30, bold: true, before: 200, after: 300 }),
+  P("A voice agent answers a caller by converting speech to text, retrieving relevant passages with that transcript, and composing an answer from them. Retrieval therefore runs on what the agent heard, not on what the caller said, while the neural rerankers inside these pipelines are trained on typed text. This project studies how much spoken queries damage retrieval, whether deep-learning methods can make the reranker more robust, and what this means for a real voice agent."),
+  P("We first built a production-grade re-ranking stage into an existing voice support agent: a cross-encoder (MiniLM-L6, 22.7M parameters) re-orders the top-25 BM25 candidates, with a safe fallback to BM25 on any failure. We then evaluated this pipeline, alongside dense and hybrid retrievers, in two settings. Part 1 uses spoken versions of three BEIR collections from science, nutrition/medicine and finance (1,271 queries), synthesised in five English accents and transcribed by Whisper over wideband audio and a simulated telephone line. Part 2 uses real human speech from SD-QA: 747 Wikipedia questions read by speakers of eleven English dialects, including North and South Indian English, which we converted into a passage-retrieval benchmark of 46,185 passages and 21 test conditions."),
+  P("Spoken queries reduced nDCG@10 by 7–25% over wideband audio, 24–58% over the telephone, 11.2% on real speech and 16.9% for real Indian-English speech, and the reranker did not reduce the relative loss. In a controlled fine-tuning study with three seeds and two checkpoint-selection protocols, fine-tuning the reranker on clean in-domain text made it more fragile to speech; training on ASR transcripts with relevance labels repaired part of the damage but never beat the original model. Label-free consistency distillation, where the reranker learns to score a transcript the way the original model scores the clean question, avoided the damage: it was never significantly worse than the original, was significantly better than clean fine-tuning on two of three collections, and was the best reranker on every real-speech group, although its gain over the original was small and not significant after correction. The largest gain on real speech came from the first stage: re-ranking a hybrid BM25 + dense candidate list instead of a BM25 list raised nDCG@10 from 0.516 to 0.607. For Indian-English speakers, the localised en-IN recogniser gave significantly worse retrieval than the US model. A pre-registered follow-up confirmed the fine-tuning findings on a modern 278M-parameter reranker (bge-reranker-base), where consistency distillation significantly beat the original model in 7 of 9 settings, and an error analysis showed that misrecognised content words — not function words — drive the loss. Re-ranking 25 passages takes about 1.1 s on CPU and 80 ms on a T4 GPU."),
+  P([{ t: "Keywords: ", bold: true }, { t: "voice agents, spoken queries, speech recognition, passage retrieval, cross-encoder reranking, fine-tuning, knowledge distillation, robustness, English dialects", italics: true }]),
+  pageBreak(),
+);
+
+add(new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-2" }),
+  P([{ t: "(If the table of contents appears empty, right-click it in Word and choose Update Field.)", italics: true, size: 18 }]));
+
+add(
+  new Paragraph({ pageBreakBefore: true, children: [t("List of Figures", { bold: true, size: 28 })], spacing: { after: 160 } }),
+  ...["Fig. 3.1  Voice agent architecture and where the reranker sits",
+    "Fig. 6.1  nDCG@10 for typed, wideband-spoken and telephone-spoken queries (Part 1)",
+    "Fig. 6.2  Macro-averaged nDCG@10 of the zero-shot and fine-tuned rerankers (Part 1)",
+    "Fig. 6.3  Re-ranking depth vs. effectiveness and CPU latency",
+    "Fig. 6.4  SD-QA: nDCG@10 per dialect with the localised and en-US ASR model (Part 2)",
+    "Fig. 6.5  SD-QA: choice of first stage on typed and real spoken questions (Part 2)",
+    "Fig. 6.6  bge-reranker-base: zero-shot vs. fine-tuned variants (Part 3)",
+    "Fig. 6.7  Effect of content-word vs. function-word errors (Part 3)"].map((x) => P(x, { after: 60, align: AlignmentType.LEFT })),
+  new Paragraph({ children: [t("List of Tables", { bold: true, size: 28 })], spacing: { before: 360, after: 160 } }),
+  ...["Table 1.1  Mapping of project components to the two courses",
+    "Table 2.1  Summary of the most relevant prior work",
+    "Table 3.1  Reranker seam configuration", "Table 3.2  Reranker seam modes",
+    "Table 4.1  Hypotheses", "Table 4.2  Test collections", "Table 4.3  ASR word error rate of synthetic spoken queries",
+    "Table 4.4  Training variants", "Table 4.5  Training hyper-parameters",
+    "Table 5.1  Experiment code", "Table 5.2  Compute used",
+    "Table 6.1  Typed-query baselines", "Table 6.2  Relative nDCG@10 change from typed to spoken queries",
+    "Table 6.3  Macro-averaged nDCG@10 of all rerankers", "Table 6.4  Telephone queries per collection",
+    "Table 6.5  Localised vs. en-US ASR model on SD-QA", "Table 6.6  Rerankers on SD-QA real speech",
+    "Table 6.7  Choice of first stage on SD-QA", "Table 6.8  bge-reranker-base fine-tuning on BEIR",
+    "Table 6.9  Word errors and first-stage recall failures", "Table 6.10  Outcome of each hypothesis",
+    "Table A.1  SD-QA degradation for all 21 conditions"].map((x) => P(x, { after: 60, align: AlignmentType.LEFT })),
+);
+
+// ================================================================= 1. Introduction
+add(H1("1. Introduction"),
+  H2("1.1 Background"),
+  P("Voice agents — telephone helplines, in-app assistants and smart speakers — increasingly answer questions with retrieval-augmented generation. The caller's speech is transcribed by an automatic speech recognition (ASR) model, the transcript is used to retrieve passages from a knowledge base, and a language model composes a spoken answer from those passages. Modern retrieval pipelines have two stages: a fast first stage (keyword search such as BM25, or a dense embedding model) shortlists candidates from the whole collection, and a slower but more accurate neural reranker, typically a transformer cross-encoder, re-orders the shortlist."),
+  P("Both stages are almost always trained and evaluated on typed text. A spoken query is different. ASR replaces words with other real words (\"kohlrabi\" becomes \"Cole Robbie\"), drops short words, and on short or noisy audio can produce fluent text that was never said. Telephone audio, narrowband and compressed, makes all of this worse, and accuracy also varies with the speaker's accent."),
+  H2("1.2 Motivation"),
+  P("This project grew out of a working voice support agent that one of us had built: a caller speaks, the agent transcribes the speech, retrieves manual passages with BM25 over an SQLite full-text index, and answers in English or Hindi. When we added a neural reranker to it, a natural question followed: the reranker was trained on clean typed questions, but in the agent it only ever sees ASR transcripts. Does it still help? Can it be trained to cope? The question applies to any voice agent, so we studied it on public benchmarks rather than on one product's manuals."),
+  H2("1.3 Problem statement"),
+  P("To measure how spoken queries — synthetic and real, wideband and telephone, across English accents including Indian English — degrade a two-stage retrieval pipeline with a cross-encoder reranker, and to determine whether deep-learning training methods (supervised fine-tuning on ASR transcripts and label-free consistency distillation) make the reranker more robust, within the latency budget of a live voice turn."),
+  H2("1.4 Objectives"),
+  numbered("Add a neural re-ranking stage to a working voice agent, with a safe fallback, configuration and tests."),
+  numbered("Build spoken-query benchmarks: synthetic speech over two channels for three specialist domains, and a real-speech, multi-dialect benchmark from SD-QA."),
+  numbered("Measure the degradation of lexical, dense, hybrid and re-ranked pipelines on spoken queries, with significance testing."),
+  numbered("Fine-tune the reranker in a controlled experiment that separates the effect of training on noisy transcripts from ordinary domain adaptation, and test consistency distillation as a label-free alternative."),
+  numbered("Measure the latency cost of re-ranking and derive practical recommendations for voice-agent builders."),
+  H2("1.5 Scope"),
+  P("The study covers English queries, one reranker family (MiniLM cross-encoders), Whisper for the synthetic part and Google ASR transcripts (released with SD-QA) for the real-speech part. Training uses only the training splits of the three BEIR collections. Hindi and other Indian languages, end-to-end answer generation, and live telephone calls are outside the scope of this report."),
+  H2("1.6 Alignment with the two courses"),
+  P("The project was approved as a combined Deep Learning and NLP mini project. Table 1.1 maps its components to the two courses."),
+  tcap("Table 1.1  Mapping of project components to the two courses"),
+  table(["Course", "Concepts applied in this project"],
+    [["Deep Learning", "Transformer cross-encoders; transfer learning and fine-tuning of a pre-trained model; loss functions (binary cross-entropy, KL divergence); knowledge distillation (teacher–student); AdamW optimisation with weight decay; learning-rate warm-up and linear decay; gradient clipping; dropout; early stopping vs. fixed budget; multi-seed experiments; GPU training and half-precision inference"],
+     ["Natural Language Processing", "Tokenisation and stop-word handling; inverted indexes and BM25 ranking; dense sentence embeddings; hybrid retrieval with reciprocal rank fusion; neural re-ranking for question answering; speech recognition and word error rate; dialectal variation in English; ranking evaluation (nDCG, MRR, Hit@1, Recall)"]],
+    [2000, 7026], { left: true }),
+  H2("1.7 Organisation of the report"),
+  P("Chapter 2 reviews related work and identifies the gap. Chapter 3 describes the voice agent and the re-ranking stage we added. Chapter 4 sets out the hypotheses, data and experimental design, and Chapter 5 the implementation and compute. Chapter 6 presents the results of both parts of the study, Chapter 7 discusses them, and Chapter 8 concludes. The appendices give the full per-dialect results, the commands to reproduce every number, and the team's contributions."),
+);
+
+// ================================================================= 2. Literature review
+add(H1("2. Literature Review"),
+  H2("2.1 Speech recognition errors in retrieval and question answering"),
+  P("Spoken SQuAD [15] showed that ASR errors severely damage machine reading comprehension, and SD-QA [16] recorded TyDi-QA questions in eleven English dialects and showed that question-answering accuracy differs across dialects, including Indian English. Closest to our work, Sidiropoulos et al. [1] added synthetic ASR noise to MS MARCO and Natural Questions and found that BM25 and dense retrieval lose 63% and 58% of MRR@10; augmenting dense-retriever training with ASR-noised questions was the most effective remedy. They studied dual-encoder retrievers and explicitly did not study cross-encoder rerankers. SQuTR [2] is a recent benchmark of 37k spoken queries under environmental noise, finding that the retrieval backend matters more than ASR model size, but it includes no reranking stage and no training. Bao [3] shows that multi-hop retrieval-augmented generation amplifies ASR errors, with corrupted entities causing most failures. Moriya and Jones [4] study BERT re-ranking over ASR transcripts of spoken documents, not spoken queries."),
+  H2("2.2 Robustness of neural rankers to query noise"),
+  P("Zhuang and Zuccon [5] showed that BERT rerankers and dense retrievers fail on queries with typos and proposed typo-aware training; they later added self-teaching, a distillation method in which a dense retriever learns to match its own clean-query behaviour on noisy queries [6]. Ma et al. [7] improved ranker robustness with contrastive fine-tuning, and Penha et al. [8] and Hagen et al. [9] found that pipelines including cross-encoders lose effectiveness under meaning-preserving query variations. These works study textual noise. ASR errors differ: they usually produce correctly spelled but wrong words, which a typo-robust model cannot detect from spelling."),
+  H2("2.3 Cross-encoders, zero-shot transfer and speech recognition"),
+  P("Cross-encoder re-ranking over a BM25 first stage [12] is a standard, strong pipeline. On the BEIR benchmark [11], small cross-encoders trained on MS MARCO transfer unevenly to specialised domains, and model size matters most out of domain [10]. Whisper [13] is a widely used open ASR model; it is accurate on clean speech but can hallucinate fluent text on short or noisy inputs [14]. Svarah [23] evaluates English ASR on Indian accents and finds substantial gaps."),
+  H2("2.4 Summary and research gap"),
+  tcap("Table 2.1  Summary of the most relevant prior work"),
+  table(["Work", "What it does", "What it does not do"],
+    [["Sidiropoulos et al., CIKM 2022 [1]", "Synthetic ASR noise on MS MARCO/NQ; noise-augmented training of dense retrievers", "No cross-encoder reranker; no telephone channel"],
+     ["SQuTR, 2026 [2]", "37k noisy spoken queries; many embedding models", "No reranker; no training"],
+     ["Bao, EMNLP 2026 [3]", "ASR errors in multi-hop RAG; entity corruption", "No reranker training"],
+     ["Moriya & Jones, SLT 2022 [4]", "BERT ranking over ASR transcripts of spoken documents", "Spoken documents, not spoken queries"],
+     ["Zhuang & Zuccon, EMNLP 2021; SIGIR 2022 [5, 6]", "Typo-aware training; self-teaching distillation for dense retrievers", "Typos, not ASR errors; distillation not applied to cross-encoders"],
+     ["Faisal et al., Findings EMNLP 2021 [16]", "Real speech in 11 English dialects for QA", "No passage retrieval or reranking evaluation"]],
+    [2600, 3400, 3026], { left: true }),
+  P("After targeted searches, we found no prior study that (i) fine-tunes a cross-encoder reranker on ASR-transcribed queries, (ii) separates the benefit of noisy training from in-domain adaptation with a clean-training control, (iii) evaluates spoken queries through a telephone channel on specialist-domain collections, or (iv) tests label-free consistency distillation for cross-encoders on ASR errors with an evaluation on real dialectal speech. This project addresses these four points.", { before: 160 }),
+);
+
+// ================================================================= 3. System overview
+add(H1("3. The Voice Agent and the Re-ranking Stage"),
+  H2("3.1 Voice agent architecture"),
+  P("The voice agent is a tool-using conversational agent built around a single \"brain\" function that handles one conversational turn. Audio enters and leaves only through two voice seams: a turn-based gateway, and a real-time streaming pipeline built on Pipecat that connects to a telephony carrier over a WebSocket (16 kHz linear PCM in, 24 kHz out). Speech-to-text and text-to-speech are provided by cloud services, and the brain itself never touches audio, so the speech stack can be replaced without changing it. The agent works in English and Hindi, following the language the caller uses."),
+  P("For each turn, the brain (1) applies a deterministic safety check that runs before any model, (2) retrieves passages from the knowledge base, (3) calls a language model through a gateway that degrades to grounded canned answers when no model is available, and (4) records any side effects (orders, tickets, escalations) only through tools that require approval. Every technical answer must cite a retrieved passage; when retrieval finds nothing, the agent says the information is not in its documents rather than guessing. Retrieval quality is therefore the step that decides whether the agent can answer at all."),
+  ...fig("fig0_architecture.png", 600, 196, "Fig. 3.1  Voice agent architecture. The reranker (orange) re-orders the BM25 candidates; it only ever sees the ASR transcript."),
+  H2("3.2 Retrieval layer"),
+  P("Documents are split into sections and indexed with SQLite FTS5, which ranks with BM25. A query builder lower-cases the transcript, removes stop words and punctuation, and forms an OR query over the remaining terms; a word-overlap search is used when FTS5 is unavailable. Results are filtered by tenant and product family and returned with citations."),
+  H2("3.3 The reranker seam"),
+  P("We added re-ranking as a separate module with one public function, rerank(query, candidates, limit, alpha, min_score), that returns the re-ordered results and a mode string recording what happened. The knowledge-base search asks the module how many BM25 candidates to fetch, passes them in, and returns the re-ranked top results with the re-ranking time, the number of candidates considered and, if applicable, the reason for abstaining. The design follows four rules:"),
+  bullet([{ t: "Off by default. ", bold: true }, "Without configuration, retrieval behaves exactly as before: same query, same row count, same order."]),
+  bullet([{ t: "Never break a call. ", bold: true }, "If the model fails to load or score, the module returns the BM25 order and records the exception in the mode (bm25_fallback:<error>)."]),
+  bullet([{ t: "Stay inside the turn budget. ", bold: true }, "Only a bounded candidate pool (25 by default) is scored, inputs are truncated to 256 tokens, and the model is loaded once at server start (warm-up) under a lock, so concurrent callers never load it twice."]),
+  bullet([{ t: "Testable without a model. ", bold: true }, "Any scoring function can be injected, which is also how the benchmark evaluates the exact production code."]),
+  tcap("Table 3.1  Reranker seam configuration (environment variables)"),
+  table(["Variable", "Default", "Effect"],
+    [["ONCALL_RERANKER", "unset (off)", "Backend to activate, e.g. a cross-encoder"],
+     ["ONCALL_RERANKER_MODEL", "ms-marco-MiniLM-L-6-v2", "Checkpoint to load (a fine-tuned model can be dropped in)"],
+     ["ONCALL_RERANKER_MAXLEN", "256", "Maximum input tokens per (query, passage) pair"],
+     ["ONCALL_RERANKER_POOL", "25", "Number of BM25 candidates re-ranked; re-read on every call"],
+     ["ONCALL_RERANKER_ALPHA", "0", "Weight of the min–max-normalised BM25 score blended with the model score"],
+     ["ONCALL_RERANKER_MIN_SCORE", "unset", "If the best model score is below this, abstain (report no confident passage)"]],
+    [3000, 2300, 3726], { left: true }),
+  tcap("Table 3.2  Reranker seam modes"),
+  table(["Mode", "Meaning"],
+    [["bm25", "Re-ranking is off; BM25 order returned unchanged"], ["<backend>", "Candidates re-ranked by the model"],
+     ["<backend>:abstained", "Re-ranked, but the best score was below the threshold"], ["bm25_fallback:<error>", "Model failed; BM25 order returned and the error recorded"]],
+    [3000, 6026], { left: true }),
+  H2("3.4 Testing"),
+  P("Six unit tests cover the seam: default-off behaviour, re-ordering with an injected scorer, fallback on a scorer exception, score blending, abstention, and an empty candidate list. Together with the existing agent tests, all 39 tests pass. Because the benchmark calls the same module, every number in Chapter 6 describes the deployed code path."),
+);
+
+// ================================================================= 4. Research design
+add(H1("4. Research Design and Methodology"),
+  H2("4.1 Research questions and hypotheses"),
+  P("The study answers four research questions: RQ1 — how much do spoken queries degrade lexical, dense, hybrid and re-ranked pipelines, and does the reranker protect against the loss? RQ2 — does training the reranker on ASR transcripts, or label-free consistency distillation, make it more robust than clean fine-tuning? RQ3 — what do re-ranking depth and model size cost in latency? RQ4 — do the findings hold for real human speech across English dialects?"),
+  P("Our first hypotheses were revised once, on 11 October 2026, after a literature review found real-speech datasets and before any test-set result was seen. Table 4.1 lists the final hypotheses; their outcomes are given in Section 6.4."),
+  tcap("Table 4.1  Hypotheses (final, fixed before test results)"),
+  table(["ID", "Hypothesis"],
+    [["H1", "Most of the end-to-end loss on spoken queries is a first-stage recall failure, so first-stage improvements (dense/hybrid) recover more than re-ranking does."],
+     ["H2", "Degradation is largest for Indian-English and other non-US dialects and for the telephone channel, and is driven by corrupted content words."],
+     ["H3", "Consistency distillation improves spoken-query re-ranking over clean fine-tuning, whereas naive training on noisy transcripts with the original labels does not."],
+     ["H4", "Training on real human speech errors transfers to real accented speech better than training on synthetic TTS errors."],
+     ["H5", "Very short spoken queries fail through ASR hallucination; the reranker's top score detects these better than the BM25 score."]],
+    [800, 8226], { left: true }),
+  H2("4.2 Datasets"),
+  H3("Part 1: BEIR collections with synthetic speech"),
+  P("We use the test splits of three BEIR [11] collections chosen for domain diversity (Table 4.2). Our BM25 reproduces published BEIR baselines (SciFact nDCG@10 0.666 vs. 0.665; FiQA 0.233 vs. 0.236), which validates the evaluation harness."),
+  tcap("Table 4.2  Test collections"),
+  table(["Collection", "Domain", "Documents", "Test queries", "Median query words"],
+    [["SciFact", "Scientific claims", "5,183", "300", "12"], ["NFCorpus", "Nutrition / medical", "3,633", "323", "2"],
+     ["FiQA-2018", "Personal finance", "57,638", "648", "10"], ["SD-QA (Part 2)", "Wikipedia questions", "46,185", "747 × 21 conditions", "—"]],
+    [1900, 2100, 1600, 1900, 1526]),
+  H3("Part 2: SD-QA real speech"),
+  P("SD-QA [16] recorded the 1,031 English TyDi-QA development questions read aloud by speakers of eleven English dialects and released transcripts of every recording from Google's recogniser with a localised model (e.g. en-IN) and with the en-US model. We converted it into a passage-retrieval task: the corpus is every candidate passage of every English TyDi-QA development article (46,185 passages from 929 articles); relevant passages are those chosen by TyDi annotators, graded by how many annotators chose them; and queries are the 747 questions with at least one annotated passage, joined to TyDi by normalised question text. Each (dialect, ASR model) pair is a test condition, giving 21 conditions (US recordings have only the en-US transcript). SD-QA is used only for testing."),
+  H2("4.3 Constructing synthetic spoken queries"),
+  P("Each Part 1 test query is synthesised with one of five text-to-speech voices covering five English accents — Indian (Rishi), American (Samantha), British (Daniel), Australian (Karen) and Irish (Moira) — assigned deterministically per query, and transcribed by Whisper base.en (int8, greedy decoding) under two channels. Wideband is 16 kHz audio, as from an app microphone. Telephone mixes the speech with babble from three other queries at 10 dB signal-to-noise ratio, down-samples to 8 kHz, band-pass filters to 300–3,400 Hz and applies G.711 µ-law companding, as on a real phone line."),
+  P("A transcript is flagged as a hallucination when it shares no word with the query, is longer than it, and has character similarity below 0.35 (e.g. \"prunes\" → \"I'm going to go to the bathroom.\"). An earlier rule without the similarity threshold over-flagged legitimate errors and was corrected before training."),
+  tcap("Table 4.3  ASR word error rate of synthetic spoken queries (mean / median)"),
+  table(["Collection", "Wideband WER", "Telephone WER", "Telephone hallucinations"],
+    [["SciFact", "0.189 / 0.143", "0.386 / 0.333", "0%"], ["NFCorpus", "0.321 / 0.000", "0.944 / 0.667", "7%"], ["FiQA", "0.060 / 0.000", "0.186 / 0.125", "0%"]],
+    [2200, 2300, 2300, 2226]),
+  H2("4.4 Retrieval systems"),
+  P("All systems are evaluated through the production code: BM25 with the agent's own query builder over SQLite FTS5; a dense retriever, BAAI/bge-small-en-v1.5 [18]; a hybrid of the two by reciprocal rank fusion with k = 60 [17]; and the cross-encoder cross-encoder/ms-marco-MiniLM-L-6-v2 [19] re-ranking the top 25 of a first stage through the reranker seam. Ablations use a 12-layer cross-encoder (33.4M parameters), 512 input tokens, and re-ranking depths from 5 to 100."),
+  H2("4.5 Training the reranker"),
+  P("Training data comes only from each collection's training split: 440 queries per collection, 1,320 in total, of which 1,200 are used for training and 120 for validation. Test-query identifiers are disjoint from training and exact text duplicates of test queries are removed. Training queries are spoken by four of the five voices — the Irish voice is held out entirely, so test results can be split into seen and unseen voices — and transcribed through the wideband or telephone channel (50/50). Sixteen transcripts classified as hallucinations are removed for every variant, leaving 1,184 training queries. Each query has one relevant passage and seven hard negatives: the top BM25 results for the form of the query being trained on, excluding judged-relevant documents."),
+  tcap("Table 4.4  Training variants (identical queries, candidate passages, optimiser and budget)"),
+  table(["Variant", "Query the model sees", "Training signal"],
+    [["FT-clean (control)", "Original text", "Relevance labels, binary cross-entropy"],
+     ["FT-noisy", "ASR transcript", "Relevance labels, binary cross-entropy"],
+     ["FT-mixed", "Text or transcript, 50/50, re-drawn each epoch", "Relevance labels, binary cross-entropy"],
+     ["FT-distill", "Transcript and text", "No labels: KL divergence to a frozen teacher's scores on the clean question"]],
+    [2200, 3300, 3526], { left: true }),
+  P("Consistency distillation keeps a frozen copy of the zero-shot reranker as a teacher. For each training query q with transcript q̃ and eight candidate passages, the teacher's softmax distribution over the candidates for the clean question, p_T(·|q), is the target, and the student minimises KL(p_T(·|q) ‖ p_S(·|q̃)) + KL(p_T(·|q) ‖ p_S(·|q)) at temperature τ = 1. The first term teaches the student to score a misheard question as the original model scores the real one; the second keeps its clean-question behaviour. No relevance label enters the loss. Each step processes four queries × eight candidates, the same 32 pairs per step as the labelled variants.", { before: 120 }),
+  tcap("Table 4.5  Training hyper-parameters (all variants)"),
+  table(["Setting", "Value"],
+    [["Base model", "cross-encoder/ms-marco-MiniLM-L-6-v2 (22.7M parameters), max length 256"],
+     ["Optimiser", "AdamW, learning rate 2×10⁻⁵, weight decay 0.01 (none on bias and LayerNorm)"],
+     ["Schedule", "10% linear warm-up, then linear decay; 3 epochs; 296 steps per epoch"],
+     ["Batch", "32 (query, passage) pairs; 1 positive + 7 hard negatives per query"],
+     ["Regularisation", "Dropout 0.1; gradient clipping at 1.0; early stopping (protocol A)"],
+     ["Seeds", "0, 1 and 2 for every variant"],
+     ["Checkpoint selection", "A: best mean validation nDCG@10 over clean and transcribed forms; B: fixed 3-epoch model"]],
+    [2400, 6626], { left: true }),
+  P("Both checkpoint-selection protocols were fixed before any test result was seen, after we noticed that a 120-query validation set produces near-ties in which early stopping often selects the starting model.", { before: 120 }),
+  H2("4.6 Evaluation"),
+  P("We report nDCG@10 (primary), MRR@10, Hit@1 — whether the single passage a voice agent would read aloud is relevant — and Recall@100. Significance uses a two-sided paired randomization test with 10,000 permutations [20] on per-query scores, with Holm correction [24] within each dataset and condition; for fine-tuned models, per-query scores are first averaged over the three seeds. Confidence intervals are 95% bootstrap intervals over queries. Latency is the median per-query re-ranking time with a warm model and batch size equal to the re-ranking depth."),
+);
+
+// ================================================================= 5. Implementation
+add(H1("5. Implementation"),
+  H2("5.1 Code organisation"),
+  P("The experiment code lives in experiments/reranker_bench of the project repository and reuses the agent's own retrieval and re-ranking modules. Table 5.1 lists the main scripts."),
+  tcap("Table 5.1  Experiment code"),
+  table(["File", "Purpose"],
+    [["bench/data.py, bench/first_stage.py", "Dataset loading; BM25 (production FTS5), dense and hybrid retrieval"],
+     ["bench/speech.py", "TTS synthesis, telephone channel simulation, Whisper transcription, WER and hallucination rule"],
+     ["bench/rerankers.py", "Cross-encoder scoring with a resumable cache; evaluation through the production seam"],
+     ["bench/metrics.py, bench/stats.py", "nDCG, MRR, Hit@1, Recall; randomization test, Holm correction, bootstrap CIs"],
+     ["run_speech.py, build_trainset.py", "Spoken versions of test and training queries; hard-negative mining"],
+     ["finetune.py", "All four training variants, including consistency distillation"],
+     ["run_bench.py, bench_latency.py", "Evaluation of every pipeline and condition; latency measurement"],
+     ["build_sdqa.py", "Conversion of SD-QA + TyDi-QA into a passage-retrieval benchmark"],
+     ["analyze.py, analyze_sdqa.py, paper/make_figures.py", "Result tables, significance tests and figures"],
+     ["pipeline.sh, pipeline_part2.sh, merge_kaggle.py", "End-to-end runs on Kaggle and merging of their outputs"]],
+    [3600, 5426], { left: true }),
+  H2("5.2 Compute and reproducibility"),
+  P("Speech synthesis, transcription and the zero-shot evaluation of Part 1 ran on a laptop CPU. All training and the Part 2 evaluation ran on Kaggle's free NVIDIA Tesla T4 GPUs from a private dataset containing the code and prepared data. Every training run was repeated with three seeds. To remove a hardware confound, all Part 1 variants were retrained on the same T4 hardware. When the Part 2 job had to retrain the nine labelled models on a fresh Kaggle instance, every validation score matched the original runs to four decimal places, which confirms that training is deterministic given the seed."),
+  tcap("Table 5.2  Compute used"),
+  table(["Stage", "Hardware", "Time"],
+    [["Labelled fine-tuning (9 runs)", "Kaggle Tesla T4", "4.5–4.9 min per run"],
+     ["Distillation fine-tuning (3 runs)", "Kaggle Tesla T4", "8.7–8.9 min per run"],
+     ["Part 2: distillation training + BEIR and SD-QA evaluation", "Kaggle Tesla T4 (job B)", "1.8 h"],
+     ["Part 2: SD-QA evaluation of the 9 labelled models (incl. retraining)", "Kaggle Tesla T4 (job A)", "2.8 h"],
+     ["Re-ranking latency", "Kaggle 4-thread CPU and T4", "40 queries per collection, warm model"]],
+    [4400, 2500, 2126], { left: true }),
+  H2("5.3 Problems encountered and how they were solved"),
+  bullet([{ t: "Over-eager hallucination filter. ", bold: true }, "The first rule flagged genuine but badly misheard transcripts as hallucinations. We added a character-similarity threshold of 0.35 before any training."]),
+  bullet([{ t: "Near-tie early stopping. ", bold: true }, "With 120 validation queries, early stopping frequently kept the base model. We pre-declared two protocols (early stopping and fixed budget) and report both."]),
+  bullet([{ t: "Hardware confound. ", bold: true }, "Early runs mixed laptop and GPU training; all variants were retrained on the same GPU type."]),
+  bullet([{ t: "Uninformative abstention test. ", bold: true }, "Our test of H5 used out-of-domain queries, which every model separated almost perfectly (AUROC ≈ 1.0). Because it could not distinguish the methods, we excluded it rather than report a misleading result."]),
+  bullet([{ t: "Joining SD-QA to TyDi-QA. ", bold: true }, "The public TyDi-QA release has no example identifier, so questions were joined by normalised question text."]),
+  bullet([{ t: "Robust Kaggle runs. ", bold: true }, "Pipelines were made resumable (cached scores), run under bash with pipefail so failures surface, and downloaded selectively to avoid multi-gigabyte model outputs."]),
+);
+
+// ================================================================= 6. Results
+add(H1("6. Results and Analysis"),
+  H2("6.1 Part 1: synthetic speech on BEIR"),
+  H3("Typed-query baselines"),
+  P("The zero-shot reranker significantly improves nDCG@10 over BM25 on NFCorpus and FiQA (p < 0.001; Hit@1 +6.2 and +9.9 points) but not on SciFact, consistent with poor transfer of small MS MARCO cross-encoders to scientific claims [10]. Improving the first stage is at least as effective: dense retrieval is the best single system on FiQA, and hybrid retrieval followed by re-ranking is best on NFCorpus (Table 6.1)."),
+  tcap("Table 6.1  Typed queries: nDCG@10 / Hit@1 (** p < 0.01 vs. BM25, Holm-corrected)"),
+  table(["System", "SciFact", "NFCorpus", "FiQA"],
+    [["BM25", "0.666 / 0.543", "0.308 / 0.437", "0.233 / 0.216"],
+     ["Dense (bge-small)", "0.703 / 0.600", "0.343** / 0.452", "0.391** / 0.390"],
+     ["Hybrid (RRF)", "0.706** / 0.587", "0.352** / 0.486", "0.345** / 0.329"],
+     ["BM25 → CE @25 (production)", "0.674 / 0.563", "0.331** / 0.499", "0.305** / 0.315"],
+     ["BM25 → CE @100", "0.665 / 0.560", "0.338** / 0.502", "0.331** / 0.323"],
+     ["Hybrid → CE @25", "0.685 / 0.567", "0.355** / 0.508", "0.369** / 0.341"]],
+    [2826, 2066, 2067, 2067]),
+  H3("Robustness to spoken queries (RQ1)"),
+  P("Every pipeline degrades on spoken queries, mildly over wideband audio and severely over the telephone (Fig. 6.1, Table 6.2). The relative loss is similar across BM25, dense, hybrid and re-ranked pipelines: the reranker does not protect against ASR errors because the errors are already in the query it receives. NFCorpus, whose queries are one or two words long, loses over half its effectiveness over the telephone, since a single misrecognised word removes the whole query."),
+  ...fig("fig1_robustness.png", 600, 174, "Fig. 6.1  nDCG@10 for typed, wideband-spoken and telephone-spoken queries."),
+  tcap("Table 6.2  Relative nDCG@10 change from typed to spoken queries"),
+  table(["System", "SciFact wide / phone", "NFCorpus wide / phone", "FiQA wide / phone"],
+    [["BM25", "−14.7% / −31.4%", "−24.7% / −58.1%", "−8.0% / −24.8%"],
+     ["Dense (bge-small)", "−12.2% / −26.9%", "−21.2% / −51.9%", "−7.1% / −25.8%"],
+     ["Hybrid (RRF)", "−13.6% / −24.5%", "−21.2% / −52.5%", "−7.3% / −24.1%"],
+     ["BM25 → CE @25", "−11.8% / −24.5%", "−21.7% / −52.4%", "−7.3% / −25.9%"]],
+    [2426, 2200, 2200, 2200]),
+  H3("Training the reranker (RQ2)"),
+  P("Three findings hold across seeds and both protocols (Fig. 6.2, Tables 6.3–6.4). First, fine-tuning on clean in-domain text makes the reranker more fragile to speech: the typed-to-telephone drop widens from 31.9% to 35.4% (protocol A) and 35.8% (protocol B). Second, training on transcripts with labels repairs part of this loss: over the telephone, FT-noisy and FT-mixed beat FT-clean on all three collections under both protocols, significantly in five of six comparisons under protocol A; but no labelled variant beats the zero-shot model, and all of them significantly hurt NFCorpus. Third, consistency distillation avoids the damage. It is the only trained variant that is never significantly worse than the zero-shot model in any collection, condition or protocol; it removes the NFCorpus damage entirely (telephone nDCG@10 0.156 vs. 0.157 zero-shot and 0.120 for FT-clean); it is significantly better than FT-clean on NFCorpus and FiQA in every condition; and it has the highest macro average in every condition. Its seed-to-seed standard deviation is at most 0.002, against up to 0.024 for the labelled variants. Its gain over the zero-shot model is small and not significant."),
+  ...fig("fig2_finetuning.png", 520, 222, "Fig. 6.2  Macro-averaged nDCG@10 of the zero-shot and fine-tuned rerankers (protocol B; error bars: standard deviation over three seeds)."),
+  tcap("Table 6.3  Macro-averaged nDCG@10 over three collections and three seeds"),
+  table(["Reranker", "Protocol", "Typed", "Wideband", "Telephone", "Typed→phone"],
+    [["Zero-shot (MS MARCO)", "—", "0.436", "0.379", "0.297", "−31.9%"],
+     ["FT-clean (control)", "A", "0.426", "0.361", "0.275", "−35.4%"], ["FT-noisy", "A", "0.433", "0.371", "0.288", "−33.4%"],
+     ["FT-mixed", "A", "0.431", "0.370", "0.287", "−33.4%"], ["FT-distill", "A", "0.440", "0.382", "0.300", "−31.9%"],
+     ["FT-clean (control)", "B", "0.422", "0.355", "0.271", "−35.8%"], ["FT-noisy", "B", "0.425", "0.361", "0.279", "−34.3%"],
+     ["FT-mixed", "B", "0.426", "0.362", "0.280", "−34.4%"], ["FT-distill", "B", "0.440", "0.382", "0.299", "−31.9%"]],
+    [2426, 1000, 1400, 1400, 1400, 1400]),
+  tcap("Table 6.4  Telephone queries, protocol B: nDCG@10 (mean ± s.d. over seeds). † p < 0.05 vs. zero-shot; ‡ p < 0.05 vs. FT-clean"),
+  table(["Reranker", "SciFact", "NFCorpus", "FiQA"],
+    [["Zero-shot", "0.509", "0.157", "0.226"], ["FT-clean", "0.487 ± 0.012", "0.120† ± 0.001", "0.205† ± 0.010"],
+     ["FT-noisy", "0.504‡ ± 0.007", "0.124†‡ ± 0.003", "0.210†‡ ± 0.006"], ["FT-mixed", "0.503‡ ± 0.007", "0.125†‡ ± 0.004", "0.211†‡ ± 0.005"],
+     ["FT-distill", "0.515 ± 0.002", "0.156‡ ± 0.000", "0.227‡ ± 0.000"]],
+    [2426, 2200, 2200, 2200]),
+  P("Results for the held-out Irish voice follow the overall pattern: over the telephone, FT-mixed (protocol B) trails the zero-shot model by 0.016 nDCG@10 on the four training voices and by 0.021 on the unseen voice, so there is no evidence that the trained models memorise training voices.", { before: 120 }),
+  H2("6.2 Latency and model size (RQ3)"),
+  P("At the production depth of 25, re-ranking takes about 1.1 s (median) on a 4-thread CPU — the whole response budget of a voice turn — and about 80 ms on a T4 GPU. Re-ranking 10 candidates costs about 0.4 s on CPU and keeps roughly half or more of the depth-25 gain on every collection (Fig. 6.3). A 12-layer cross-encoder improves SciFact significantly (0.687 vs. 0.674, p = 0.013) but not NFCorpus or FiQA, and 512 instead of 256 input tokens gives no significant change on any collection."),
+  ...fig("fig3_depth_latency.png", 600, 162, "Fig. 6.3  nDCG@10 (blue) and median CPU re-ranking latency (red) against re-ranking depth."),
+  H2("6.3 Part 2: real human speech across dialects (RQ4)"),
+  H3("Who is hurt most"),
+  P("On SD-QA, real speech reduces nDCG@10 of the production pipeline (BM25 → CE) from 0.581 on typed questions by 11.2% on average over the 21 conditions — from 3.3% for US speakers to 21.9% for South Indian speakers transcribed by the en-IN model, the worst condition in the benchmark (Fig. 6.4; all conditions in Appendix A). The four Indian-English conditions lose 16.9% on average. As with synthetic speech, BM25, dense, hybrid and re-ranked pipelines lose similar proportions."),
+  ...fig("fig4_sdqa_dialects.png", 600, 233, "Fig. 6.4  SD-QA: nDCG@10 of BM25 → CE per dialect with the localised and the en-US ASR model. Dashed line: typed questions. Indian dialects in red."),
+  H3("Which recogniser to use"),
+  P("A localised recogniser improves retrieval significantly for six dialects, by up to 0.037 nDCG@10. For both Indian dialects the opposite holds: en-IN is significantly worse than en-US, matching its higher word error rate on these recordings (Table 6.5)."),
+  tcap("Table 6.5  Localised vs. en-US ASR model, same speakers (BM25 → CE; * p < 0.05, paired randomization test)"),
+  table(["Dialect", "Localised model", "WER loc. / US", "nDCG loc.", "nDCG US", "Δ"],
+    [["UK", "en-GB", "0.080 / 0.109", "0.543", "0.508", "+0.035*"], ["Australia", "en-AU", "0.082 / 0.102", "0.549", "0.513", "+0.037*"],
+     ["Nigeria", "en-NG", "0.118 / 0.156", "0.505", "0.471", "+0.034*"], ["Kenya", "en-KE", "0.154 / 0.177", "0.488", "0.468", "+0.021*"],
+     ["New Zealand", "en-NZ", "0.067 / 0.089", "0.536", "0.518", "+0.018*"], ["South Africa", "en-ZA", "0.069 / 0.078", "0.556", "0.546", "+0.010"],
+     ["Ireland", "en-IE", "0.083 / 0.086", "0.535", "0.532", "+0.003"], ["Philippines", "en-PH", "0.084 / 0.076", "0.538", "0.535", "+0.003"],
+     ["India-North", "en-IN", "0.129 / 0.102", "0.490", "0.510", "−0.020*"], ["India-South", "en-IN", "0.176 / 0.120", "0.454", "0.479", "−0.026*"]],
+    [1700, 1500, 1700, 1400, 1400, 1326]),
+  H3("Trained rerankers on real speech"),
+  P("The labelled fine-tuned variants are within ±0.002 of the zero-shot model in every group (Table 6.6), so the fragility that clean fine-tuning caused on BEIR does not carry over to out-of-domain Wikipedia questions: it is an in-domain effect. FT-distill gives the highest score in every speech group, with the largest margin on Indian speech transcribed by the en-IN model. These differences are small: the uncorrected p-value against zero-shot is 0.016–0.08, and none survives Holm correction over the seven comparisons in each group."),
+  tcap("Table 6.6  Rerankers on SD-QA real speech, BM25 top-25: nDCG@10 (protocol B, mean of 3 seeds)"),
+  table(["Group", "Zero-shot", "FT-clean", "FT-noisy", "FT-mixed", "FT-distill", "Raw p (distill vs. zero)"],
+    [["Typed", "0.581", "0.582", "0.580", "0.581", "0.586", "0.030"], ["All 21 speech conditions", "0.516", "0.515", "0.516", "0.516", "0.519", "0.079"],
+     ["Indian English (4)", "0.483", "0.482", "0.483", "0.484", "0.486", "0.029"], ["Indian English, en-IN ASR", "0.472", "0.470", "0.471", "0.471", "0.475", "0.016"],
+     ["US English", "0.562", "0.564", "0.564", "0.564", "0.564", "0.279"]],
+    [2226, 1000, 1000, 1000, 1000, 1100, 1700]),
+  H3("Where the loss happens"),
+  P("On SD-QA the first stage limits the production pipeline (Table 6.7, Fig. 6.5). BM25 retrieves only 80.5% of relevant passages in its top 100 on real speech, against 90.2% for dense retrieval. Re-ranking a hybrid BM25 + dense list instead of the BM25 list raises nDCG@10 from 0.516 to 0.607 on real speech and from 0.472 to 0.552 for Indian speech with the en-IN model, significantly better than dense retrieval alone (p < 0.001). The hybrid pipeline also loses a smaller share to speech (−9.5% vs. −11.2%). Re-ranking the hybrid list with FT-distill adds a further 0.004–0.006 in every group (uncorrected p = 0.011–0.028). This comparison was not in the original analysis plan, so it is reported as exploratory."),
+  tcap("Table 6.7  Choice of first stage on SD-QA: nDCG@10 (Recall@100 of the first stage in brackets)"),
+  table(["Group", "BM25", "Dense", "BM25 → CE", "Hybrid → CE", "Hybrid → FT-distill"],
+    [["Typed", "0.375 (0.897)", "0.615 (0.987)", "0.581", "0.671", "0.677"],
+     ["All 21 speech conditions", "0.323 (0.805)", "0.537 (0.902)", "0.516", "0.607", "0.611"],
+     ["Indian English (4)", "0.304 (0.771)", "0.505 (0.866)", "0.483", "0.572", "0.576"],
+     ["Indian English, en-IN ASR", "0.294 (0.752)", "0.478 (0.839)", "0.472", "0.552", "0.557"]],
+    [2426, 1400, 1400, 1200, 1300, 1300]),
+  ...fig("fig5_sdqa_pipelines.png", 600, 233, "Fig. 6.5  SD-QA: production pipeline vs. dense retrieval and re-ranking of a hybrid candidate list."),
+  H2("6.4 Part 3: pre-registered follow-up"),
+  P("To test whether our findings hold beyond one small model, and to explain them, we pre-registered six further hypotheses (C1–C6) with their test sets, models and statistical tests, and committed the document to the repository before running anything (paper/PREREGISTRATION_PART3.md). Three are complete and reported here. Three — a replication of the hybrid first-stage result on new real-speech test sets (Whisper-transcribed SD-QA, HeySQuAD and SLUE-SQA-5), training on real vs. synthetic speech errors (HeySQuAD), and distillation from a larger teacher (bge-reranker-v2-m3) — were still running on Kaggle at the time of writing."),
+  H3("C2: a modern reranker"),
+  P("We repeated the fine-tuning study with BAAI/bge-reranker-base (278M parameters), with the same training data and settings. Clean fine-tuning again made the reranker more fragile: the typed-to-telephone drop widened by 2.8 points (95% paired bootstrap CI 0.7–4.8), and clean and noisy fine-tuning significantly hurt NFCorpus and FiQA. Consistency distillation became a clear win: it was significantly better than the zero-shot model in 7 of the 9 dataset–condition cells and never worse, raising the telephone macro nDCG@10 from 0.282 to 0.295, with seed standard deviation at most 0.001 (Table 6.8, Fig. 6.6). The larger zero-shot bge-reranker-v2-m3 (568M) lost as large a share to telephone speech as the small MiniLM (−32.3% vs. −31.9%): size alone does not protect against ASR errors."),
+  tcap("Table 6.8  bge-reranker-base on BEIR (macro over three collections; protocol B, mean of 3 seeds)"),
+  table(["Reranker", "Typed", "Wideband", "Telephone", "Typed→phone", "Δ drop vs. zero-shot [95% CI]"],
+    [["Zero-shot", "0.420", "0.365", "0.282", "−32.9%", "—"],
+     ["FT-clean", "0.421", "0.362", "0.271", "−35.7%", "−2.8 [−4.8, −0.7]"],
+     ["FT-noisy", "0.413", "0.357", "0.271", "−34.3%", "−1.4 [−3.5, +0.6]"],
+     ["FT-distill", "0.431", "0.376", "0.295", "−31.5%", "+1.4 [0.0, +2.7]"]],
+    [1800, 1100, 1200, 1200, 1300, 2426]),
+  ...fig("fig6_bge_finetuning.png", 480, 224, "Fig. 6.6  bge-reranker-base: zero-shot vs. fine-tuned variants (error bars: s.d. over three seeds)."),
+  H3("C4 and C5: which words break, and where"),
+  P("Each question was aligned word by word to its transcript and tagged with spaCy. A regression of the per-query change in nDCG@10 on the error rates of content words (nouns, names, numbers, adjectives, main verbs) and function words shows that content-word errors drive the loss: on SD-QA, losing all content words costs 0.65 nDCG@10, while function-word errors cause no harm; a single misrecognised named entity costs 0.27 on average (Table 6.9, Fig. 6.7). Among the spoken queries that lose effectiveness, in 53% (SD-QA) to 56% (BEIR telephone) of cases the relevant passage is no longer in the BM25 top-25, so the reranker never sees it."),
+  tcap("Table 6.9  Word errors (OLS coefficients, 95% query-cluster bootstrap CI) and share of losses from first-stage recall failure"),
+  table(["Group", "β content words", "β function words", "Recall-failure share"],
+    [["SD-QA (Google ASR)", "−0.646 [−0.745, −0.553]", "+0.117 [+0.034, +0.213]", "53% [47, 59]"],
+     ["BEIR wideband", "−0.369 [−0.498, −0.252]", "−0.025 [−0.134, +0.069]", "42% [35, 50]"],
+     ["BEIR telephone", "−0.363 [−0.443, −0.285]", "−0.011 [−0.086, +0.061]", "56% [51, 61]"]],
+    [2200, 2400, 2400, 2026]),
+  ...fig("fig7_word_errors.png", 520, 236, "Fig. 6.7  Change in nDCG@10 per unit error rate of content vs. function words (95% CI)."),
+  H2("6.5 Outcome of each hypothesis"),
+  tcap("Table 6.10  Outcome of each hypothesis"),
+  table(["ID", "Outcome", "Evidence"],
+    [["H1", "Supported", "On SD-QA a hybrid first stage adds +0.091 nDCG@10 while the best reranker change adds ≤ 0.004; BM25 Recall@100 falls from 0.897 to 0.805 on speech. On BEIR the reranker does not reduce the relative loss."],
+     ["H2", "Supported", "Indian English loses 16.9% vs. 11.2% on average, India-South/en-IN is the worst condition, and the telephone channel costs 24–58%. Content-word errors, not function-word errors, drive the loss (Part 3, C4)."],
+     ["H3", "Supported (strongly on the larger model)", "MiniLM: distillation beats clean fine-tuning and is never worse than zero-shot, but its gain over zero-shot is not significant. bge-reranker-base: distillation significantly beats zero-shot in 7 of 9 cells (Part 3, C2)."],
+     ["H4", "In progress", "Pre-registered as C3; HeySQuAD real vs. synthetic training running on Kaggle."],
+     ["H5", "Not reported", "The available test was uninformative (all methods AUROC ≈ 1.0) and was excluded."]],
+    [700, 1800, 6526], { left: true }),
+);
+
+// ================================================================= 7. Discussion
+add(H1("7. Discussion"),
+  H2("7.1 Interpretation"),
+  P([{ t: "The reranker cannot restore lost words. ", bold: true }, "A cross-encoder reads the query and passage together, but when a key term has been replaced by another real word, both the first stage and the reranker match the wrong term. This is why every pipeline loses a similar share of its effectiveness."]),
+  P([{ t: "Clean fine-tuning increases fragility in-domain. ", bold: true }, "Fine-tuning on clean in-domain queries appears to strengthen reliance on exact domain terminology, which is precisely what ASR corrupts. The effect disappears on out-of-domain SD-QA, where the fine-tuned models behave like the original."]),
+  P([{ t: "Label noise explains the NFCorpus damage. ", bold: true }, "NFCorpus has many relevant documents per query and incomplete judgments, so hard negatives mined from BM25 often contain unjudged relevant documents, teaching the model to reject them. Distillation uses the same queries and passages but no labels, and it removes the damage completely, which supports this explanation."]),
+  P([{ t: "Distillation is safe but small. ", bold: true }, "Distillation anchors the student to the original model's ranking of each candidate list, so it cannot drift far from it. This explains both its stability across seeds and the small size of its gains: it helps when the transcript keeps the key terms, but cannot recover terms ASR has removed."]),
+  P([{ t: "Indian English and the choice of recogniser. ", bold: true }, "Indian-English speakers lose the most, and in SD-QA's 2021 transcripts the en-IN recogniser made more errors on their speech than the en-US model. The locale name of a model is not a guarantee of accuracy for the callers it is meant to serve."]),
+  H2("7.2 Recommendations for voice-agent builders"),
+  numbered("Fix the speech channel first: telephone audio costs 24–58% of retrieval quality, and no reranker can undo it.", "rec"),
+  numbered("Re-rank a hybrid BM25 + dense candidate list rather than a BM25 list; on real speech this was worth +0.09 nDCG@10.", "rec"),
+  numbered("If the reranker must be adapted, prefer label-free consistency distillation; never fine-tune on clean text alone.", "rec"),
+  numbered("Choose the ASR model by measured accuracy on the target callers — especially for Indian English.", "rec"),
+  numbered("Budget the reranker: on CPU, re-rank 10 rather than 25 passages, or move the reranker to a GPU.", "rec"),
+  H2("7.3 Threats to validity"),
+  bullet("Training speech is synthetic; real speech is used only for testing, and real speech usually produces more ASR errors than synthetic speech [1]."),
+  bullet("Part 1 uses Whisper and Part 2 uses Google's 2021 recogniser, so ASR model and domain both differ between the parts."),
+  bullet("One reranker family (MiniLM) and a small training set (1,184 queries) are evaluated."),
+  bullet("The telephone channel is simulated, and SD-QA recordings are not telephone audio."),
+  bullet("Distillation's gains are not significant after multiple-comparison correction, and the hybrid comparison on SD-QA is exploratory."),
+  bullet("Latency was measured on Kaggle hardware rather than on the deployment machine."),
+);
+
+// ================================================================= 8. Conclusion
+add(H1("8. Conclusion and Future Work"),
+  H2("8.1 Conclusion"),
+  P("We added a safe, configurable neural re-ranking stage to a working voice agent and studied how spoken queries affect it on four public benchmarks covering science, medicine, finance and open-domain Wikipedia questions, with synthetic speech over two channels and real speech in eleven English dialects. Spoken queries reduce retrieval effectiveness by 7–25% over wideband audio, 24–58% over the telephone and 11% on real speech, with Indian English among the hardest hit at 17%, and the reranker does not reduce this loss. Fine-tuning the reranker on clean in-domain text makes it more fragile; training on transcripts with labels repairs part of the damage; and label-free consistency distillation avoids it, matching or slightly exceeding the original model on every test set. The largest gain on real speech, however, comes from re-ranking a hybrid candidate list. Robustness work for voice agents should therefore target the speech channel, the first stage and the training objective together, within the latency budget of a live conversation."),
+  H2("8.2 Future work"),
+  numbered("Complete the three running pre-registered tests: hybrid first stage on new real-speech sets (C1), real vs. synthetic training noise from HeySQuAD (C3, H4), and distillation from a larger teacher (C6).", "fut"),
+  numbered("Transcribe the SD-QA audio with Whisper, so that both parts of the study share one ASR model.", "fut"),
+  numbered("Strengthen consistency distillation with hybrid candidate lists, a larger teacher and a tuned temperature.", "fut"),
+  numbered("Switch the voice agent to a hybrid first stage with the re-ranking depth chosen for its hardware.", "fut"),
+  numbered("Record a small set of real Indian-English telephone queries, and evaluate ASR on Svarah [23].", "fut"),
+);
+
+// ================================================================= references
+const refs = [
+  "G. Sidiropoulos, S. Vakulenko, and E. Kanoulas, \"On the impact of speech recognition errors in passage retrieval for spoken question answering,\" in Proc. CIKM, 2022, doi: 10.1145/3511808.3557662.",
+  "Y. Li et al., \"SQuTR: A robustness benchmark for spoken query to text retrieval under acoustic noise,\" arXiv:2602.12783, 2026.",
+  "Z. Bao, \"Better retrieval, worse robustness: How multi-hop RAG amplifies upstream ASR errors,\" in Proc. EMNLP, 2026, arXiv:2608.22872.",
+  "Y. Moriya and G. J. F. Jones, \"Improving noise robustness for spoken content retrieval using semi-supervised ASR and N-best transcripts for BERT-based ranking models,\" in Proc. IEEE SLT, 2022, arXiv:2301.06056.",
+  "S. Zhuang and G. Zuccon, \"Dealing with typos for BERT-based passage retrieval and ranking,\" in Proc. EMNLP, 2021, pp. 2836–2842.",
+  "S. Zhuang and G. Zuccon, \"CharacterBERT and self-teaching for improving the robustness of dense retrievers on queries with typos,\" in Proc. SIGIR, 2022.",
+  "X. Ma, C. dos Santos, and A. O. Arnold, \"Contrastive fine-tuning improves robustness for neural rankers,\" in Findings of ACL-IJCNLP, 2021, pp. 570–582.",
+  "G. Penha, A. Câmara, and C. Hauff, \"Evaluating the robustness of retrieval pipelines with query variation generators,\" in Proc. ECIR, LNCS 13185, 2022, pp. 397–412.",
+  "T. Hagen, H. Scells, and M. Potthast, \"Revisiting query variation robustness of transformer models,\" in Findings of EMNLP, 2024.",
+  "G. M. Rosa et al., \"In defense of cross-encoders for zero-shot retrieval,\" arXiv:2212.06121, 2022.",
+  "N. Thakur, N. Reimers, A. Rücklé, A. Srivastava, and I. Gurevych, \"BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models,\" in NeurIPS Datasets and Benchmarks Track, 2021.",
+  "R. Nogueira and K. Cho, \"Passage re-ranking with BERT,\" arXiv:1901.04085, 2019.",
+  "A. Radford et al., \"Robust speech recognition via large-scale weak supervision,\" in Proc. ICML, 2023.",
+  "A. Koenecke et al., \"Careless Whisper: Speech-to-text hallucination harms,\" in Proc. ACM FAccT, 2024, arXiv:2402.08021.",
+  "C.-H. Lee et al., \"Spoken SQuAD: A study of mitigating the impact of speech recognition errors on listening comprehension,\" in Proc. Interspeech, 2018.",
+  "F. Faisal, S. Keshava, M. M. I. Alam, and A. Anastasopoulos, \"SD-QA: Spoken dialectal question answering for the real world,\" in Findings of EMNLP, 2021.",
+  "G. V. Cormack, C. L. A. Clarke, and S. Büttcher, \"Reciprocal rank fusion outperforms Condorcet and individual rank learning methods,\" in Proc. SIGIR, 2009.",
+  "S. Xiao et al., \"C-Pack: Packaged resources to advance general Chinese embedding,\" arXiv:2309.07597, 2023.",
+  "W. Wang et al., \"MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained transformers,\" in Proc. NeurIPS, 2020.",
+  "M. D. Smucker, J. Allan, and B. Carterette, \"A comparison of statistical significance tests for information retrieval evaluation,\" in Proc. CIKM, 2007.",
+  "I. Loshchilov and F. Hutter, \"Decoupled weight decay regularization,\" in Proc. ICLR, 2019.",
+  "Y. Wu et al., \"HeySQuAD: A spoken question answering dataset,\" arXiv:2304.13689, 2023.",
+  "T. Javed et al., \"Svarah: Evaluating English ASR systems on Indian accents,\" in Proc. Interspeech, 2023.",
+  "S. Holm, \"A simple sequentially rejective multiple test procedure,\" Scandinavian Journal of Statistics, vol. 6, no. 2, pp. 65–70, 1979.",
+];
+add(H1("References"), refs.map((r, i) => new Paragraph({
+  children: [t(`[${i + 1}] `, { size: 21 }), t(r, { size: 21 })], spacing: { after: 80 },
+  indent: { left: 480, hanging: 480 }, alignment: AlignmentType.LEFT,
+})));
+
+// ================================================================= appendices
+// generated from cache/sdqa by analyze_sdqa helpers (see report build notes)
+const sdqa = [["US", "en-US", "0.042", "0.360", "0.594", "0.520", "0.562", "−3.3%"], ["UK", "en-GB", "0.080", "0.336", "0.558", "0.493", "0.543", "−6.6%"], ["UK", "en-US", "0.109", "0.318", "0.524", "0.465", "0.508", "−12.6%"], ["Australia", "en-AU", "0.082", "0.340", "0.563", "0.498", "0.549", "−5.5%"], ["Australia", "en-US", "0.102", "0.322", "0.534", "0.464", "0.513", "−11.8%"], ["Ireland", "en-IE", "0.083", "0.329", "0.551", "0.493", "0.535", "−7.9%"], ["Ireland", "en-US", "0.086", "0.335", "0.553", "0.490", "0.532", "−8.4%"], ["New Zealand", "en-NZ", "0.067", "0.338", "0.571", "0.493", "0.536", "−7.7%"], ["New Zealand", "en-US", "0.089", "0.328", "0.545", "0.479", "0.518", "−10.9%"], ["South Africa", "en-ZA", "0.069", "0.354", "0.576", "0.510", "0.556", "−4.3%"], ["South Africa", "en-US", "0.078", "0.347", "0.561", "0.499", "0.546", "−6.0%"], ["Philippines", "en-PH", "0.084", "0.332", "0.545", "0.484", "0.538", "−7.4%"], ["Philippines", "en-US", "0.076", "0.331", "0.562", "0.484", "0.535", "−7.9%"], ["Nigeria", "en-NG", "0.118", "0.309", "0.519", "0.459", "0.505", "−13.2%"], ["Nigeria", "en-US", "0.156", "0.289", "0.492", "0.432", "0.471", "−18.9%"], ["Kenya", "en-KE", "0.154", "0.311", "0.517", "0.453", "0.488", "−16.0%"], ["Kenya", "en-US", "0.177", "0.290", "0.481", "0.424", "0.468", "−19.5%"], ["India-North", "en-IN", "0.129", "0.303", "0.495", "0.444", "0.490", "−15.7%"], ["India-North", "en-US", "0.102", "0.322", "0.544", "0.472", "0.510", "−12.3%"], ["India-South", "en-IN", "0.176", "0.284", "0.461", "0.414", "0.454", "−21.9%"], ["India-South", "en-US", "0.120", "0.305", "0.517", "0.453", "0.479", "−17.5%"]];
+add(H1("Appendix A. SD-QA Results for All Conditions"),
+  tcap("Table A.1  SD-QA: WER and nDCG@10 per dialect and ASR model (typed: BM25 0.375, Dense 0.615, Hybrid 0.529, BM25 → CE 0.581)"),
+  table(["Dialect", "ASR model", "WER", "BM25", "Dense", "Hybrid", "BM25 → CE", "vs. typed"], sdqa, [1700, 1100, 900, 1000, 1000, 1000, 1200, 1126]),
+);
+
+const cmd = (text) => new Paragraph({ children: [t(text, { font: "Courier New", size: 18 })], spacing: { after: 40 }, alignment: AlignmentType.LEFT });
+add(H1("Appendix B. Reproducing the Results"),
+  P("All commands are run from experiments/reranker_bench with its virtual environment. Training and the Part 2 evaluation were run on Kaggle (GPU T4) from a private dataset of this folder; results are merged back with merge_kaggle.py."),
+  H3("Part 1 (BEIR, synthetic speech)"),
+  cmd("./pipeline.sh                       # speech, first stages, training, evaluation"),
+  cmd(".venv/bin/python -I analyze.py      # results/results.md and significance tests"),
+  H3("Part 2 (distillation and SD-QA)"),
+  cmd("MODE=B ./pipeline_part2.sh          # distillation training, BEIR + SD-QA evaluation"),
+  cmd("MODE=A ./pipeline_part2.sh          # SD-QA evaluation of the labelled models"),
+  cmd(".venv/bin/python -I merge_kaggle.py <kaggle out dir> [...]"),
+  cmd(".venv/bin/python -I analyze_sdqa.py # results/sdqa_results.md"),
+  cmd(".venv/bin/python -I paper/make_figures.py"),
+  H3("Unit tests of the voice agent and reranker seam"),
+  cmd("PYTHONPATH=platform:src python -m unittest discover -s tests   # 39 tests"),
+  H3("Enabling the reranker in the voice agent"),
+  cmd("ONCALL_RERANKER=cross-encoder ONCALL_RERANKER_POOL=10 python app.py"),
+);
+
+add(H1("Appendix C. Team Contributions"),
+  table(["Member", "Contribution"],
+    [["[Student Name 1]", "[e.g. voice agent integration, reranker seam, tests]"], ["[Student Name 2]", "[e.g. speech synthesis, telephone channel, ASR evaluation]"],
+     ["[Student Name 3]", "[e.g. fine-tuning and distillation experiments on Kaggle]"], ["[Student Name 4]", "[e.g. SD-QA benchmark, statistical analysis, paper and presentation]"]],
+    [2600, 6426], { left: true }),
+);
+
+const doc = new Document({
+  creator: "[Student names]", title: "Does the Reranker Hear You? — Project Report",
+  features: { updateFields: true },
+  styles: {
+    default: { document: { run: { font: FONT, size: 24 } } },
+    paragraphStyles: [
+      { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: FONT, size: 32, bold: true, color: "000000" }, paragraph: { outlineLevel: 0 } },
+      { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true, run: { font: FONT, size: 26, bold: true, color: "000000" }, paragraph: { outlineLevel: 1 } },
+    ],
+  },
+  numbering: { config: [
+    { reference: "bul", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 270 } } } }] },
+    ...["num", "rec", "fut"].map((reference) => ({ reference, levels: [{ level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 360 } } } }] })),
+  ] },
+  sections: [{
+    properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } },
+    footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 20 })] })] }) },
+    children: body,
+  }],
+});
+Packer.toBuffer(doc).then((buf) => { fs.writeFileSync(outPath, buf); console.log("wrote", outPath); });

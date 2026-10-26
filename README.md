@@ -34,9 +34,10 @@ Caller ──► ASR ──► transcript ──► BM25 / dense / hybrid search
 | 1 | Spoken queries cost **7–25%** of nDCG@10 over a microphone and **24–58%** over a telephone line; the reranker does not reduce the relative loss. | 3 BEIR collections, 5 accents, Whisper |
 | 2 | On **real speech** in 11 English dialects the loss is **11%** on average and **17% for Indian English**; for Indian speakers the en-IN recogniser is *worse* than en-US. | SD-QA, 747 questions × 21 conditions |
 | 3 | Fine-tuning the reranker on clean text makes it **more fragile** to speech (significant on two models). | MiniLM-L6 and bge-reranker-base, 3 seeds |
-| 4 | **Consistency distillation** (label-free: the reranker learns to score a transcript the way the original model scores the clean question) avoids that damage, and on bge-reranker-base **beats the zero-shot model in 7 of 9 settings, never worse**. | Pre-registered replication |
-| 5 | Misrecognised **content words** (names, nouns, numbers), not function words, drive the loss; in ~**half** of failures the right passage never reaches the reranker. | Word-aligned error analysis |
-| 6 | The biggest single gain on real speech comes from the **first stage**: re-ranking a hybrid (BM25 + dense) list raises nDCG@10 from 0.516 to 0.607. | SD-QA (exploratory; pre-registered replication in progress) |
+| 4 | **Consistency distillation** (label-free: the reranker learns to score a transcript the way the original model scores the clean question) avoids that damage. On bge-reranker-base it **beats the zero-shot model in 7 of 9 settings, never worse**; with a 568M-parameter teacher it **significantly improves even the 22.7M reranker on all three pre-registered test groups**. | Pre-registered tests C2, C6 |
+| 5 | Misrecognised **content words** (names, nouns, numbers), not function words, drive the loss; in **53–68%** of failures the right passage never reaches the reranker. | Pre-registered tests C4, C5 |
+| 6 | The biggest gains come from outside the reranker: re-ranking a **hybrid** (BM25 + dense) list wins on all three new real-speech test sets (+0.010 to +0.085 nDCG@10), and a **stronger recogniser** (Whisper large-v3-turbo) cuts India-South's loss from 25% to 9%. | Pre-registered test C1; SD-QA, HeySQuAD, SLUE-SQA-5 |
+| 7 | Training on **real** human speech errors did **not** beat training on synthetic (TTS) errors, and was significantly worse on SLUE-SQA-5; the real transcripts were twice as noisy. | Pre-registered test C3 (not supported) |
 
 All experiments use three random seeds, paired randomization tests with Holm correction, and
 checkpoint-selection rules fixed before any test result. Part 3 hypotheses were
@@ -99,9 +100,9 @@ reproduced every validation score to four decimal places.
 
 ## Status
 
-Parts 1 and 2, and three of the six pre-registered Part 3 tests, are complete. The remaining three
-(hybrid first stage on new real-speech test sets, real vs. synthetic training noise, distillation from
-a larger teacher) are running.
+All three parts are complete. Of the six pre-registered Part 3 tests, five were supported and one
+(real vs. synthetic training noise) was not; all six are reported in the paper and in
+[`benchmark/results/part3_results.md`](benchmark/results/part3_results.md).
 
 ## Team
 

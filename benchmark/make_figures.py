@@ -182,7 +182,7 @@ if all(P3.scores(g3[s9], k) is not None for s9 in sets9 for k, _, _ in p9):
     for j, (key, lab, col) in enumerate(p9):
         ax.bar(np.arange(len(sets9)) + (j - 1.5) * 0.2, [P3.scores(g3[s9], key).mean() for s9 in sets9], 0.2, label=lab, color=col)
     ax.set_xticks(range(len(sets9))); ax.set_xticklabels([s9.replace(" (11 dialects)", "") for s9 in sets9])
-    ax.set_ylabel("nDCG@10 (spoken)"); ax.legend(frameon=False, ncol=4, fontsize=7.5, loc="upper left"); ax.set_ylim(0, None)
+    ax.set_ylabel("nDCG@10 (spoken)"); ax.legend(frameon=False, ncol=4, fontsize=7.5, loc="lower center", bbox_to_anchor=(0.5, 1.0)); ax.set_ylim(0, 1.0)
     fig.tight_layout(); fig.savefig(OUT / "fig9_first_stage_new_sets.png", dpi=220); plt.close(fig)
 print("figures written")
 

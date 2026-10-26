@@ -67,21 +67,22 @@ add(
   center("Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009)", { size: 22, bold: true }),
   center("Academic Year 2026–27", { size: 22, after: 600 }),
   center("Submitted by", { size: 22, italics: true }),
-  center("[Student Name 1] — [Roll No.]", { size: 22, after: 40 }),
-  center("[Student Name 2] — [Roll No.]", { size: 22, after: 40 }),
-  center("[Student Name 3] — [Roll No.]", { size: 22, after: 40 }),
-  center("[Student Name 4] — [Roll No.]", { size: 22, after: 400 }),
+  center("Arya Shah — B112", { size: 22, after: 40 }),
+  center("Teerth Shah — B113", { size: 22, after: 40 }),
+  center("Urja Singhi — B144", { size: 22, after: 400 }),
   center("Under the guidance of", { size: 22, italics: true }),
-  center("[Faculty Name], Deep Learning   ·   [Faculty Name], Natural Language Processing", { size: 22 }),
+  center("Prof. Abhay Kolhe, Deep Learning", { size: 22, after: 40 }),
+  center("Prof. Soni Sweta and Prof. Manisha Tiwari, Natural Language Processing", { size: 22 }),
   pageBreak(),
 );
 
 add(
   center("CERTIFICATE", { size: 30, bold: true, before: 400, after: 400 }),
-  P("This is to certify that the mini project entitled \"Does the Reranker Hear You? Robustness of Neural Retrieval to Spoken Queries and Noise-Aware Training of Cross-Encoder Rerankers for Voice Agents\" is a bonafide work carried out by [Student Name 1], [Student Name 2], [Student Name 3] and [Student Name 4] in partial fulfilment of the requirements of the courses Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009) during the academic year 2026–27, as a combined project approved by both course faculties."),
+  P("This is to certify that the mini project entitled \"Does the Reranker Hear You? Robustness of Neural Retrieval to Spoken Queries and Noise-Aware Training of Cross-Encoder Rerankers for Voice Agents\" is a bonafide work carried out by Arya Shah (B112), Teerth Shah (B113) and Urja Singhi (B144) in partial fulfilment of the requirements of the courses Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009) during the academic year 2026–27, as a combined project approved by both course faculties."),
   P(" ", { after: 1200 }),
-  table(["Faculty, Deep Learning", "Faculty, Natural Language Processing"],
-    [["Signature:", "Signature:"], ["Name: [Faculty name]", "Name: [Faculty name]"], ["Date:", "Date:"]], [4513, 4513], { left: true }),
+  table(["Deep Learning", "Natural Language Processing", "Natural Language Processing"],
+    [["Signature:", "Signature:", "Signature:"], ["Prof. Abhay Kolhe", "Prof. Soni Sweta", "Prof. Manisha Tiwari"], ["Date:", "Date:", "Date:"]],
+    [3009, 3009, 3008], { left: true }),
   pageBreak(),
 );
 
@@ -531,13 +532,13 @@ add(H1("Appendix B. Reproducing the Results"),
 
 add(H1("Appendix C. Team Contributions"),
   table(["Member", "Contribution"],
-    [["[Student Name 1]", "[e.g. voice agent integration, reranker seam, tests]"], ["[Student Name 2]", "[e.g. speech synthesis, telephone channel, ASR evaluation]"],
-     ["[Student Name 3]", "[e.g. fine-tuning and distillation experiments on Kaggle]"], ["[Student Name 4]", "[e.g. SD-QA benchmark, statistical analysis, paper and presentation]"]],
+    [["Arya Shah (B112)", "[describe contribution]"], ["Teerth Shah (B113)", "[describe contribution]"],
+     ["Urja Singhi (B144)", "[describe contribution]"]],
     [2600, 6426], { left: true }),
 );
 
 const doc = new Document({
-  creator: "[Student names]", title: "Does the Reranker Hear You? — Project Report",
+  creator: "Arya Shah, Teerth Shah, Urja Singhi", title: "Does the Reranker Hear You? — Project Report",
   features: { updateFields: true },
   styles: {
     default: { document: { run: { font: FONT, size: 24 } } },

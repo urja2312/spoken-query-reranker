@@ -55,9 +55,9 @@ const add = (...xs) => body.push(...xs.flat());
 // ---------------------------------------------------------------- title block
 add(
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [t("Does the Reranker Hear You? Robustness of Neural Retrieval to Spoken Queries and Noise-Aware Fine-Tuning of Cross-Encoder Rerankers for Voice Agents", { size: 32, bold: true })] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [t("[Student Name 1], [Student Name 2], [Student Name 3], [Student Name 4]", { size: 22 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [t("Arya Shah, Teerth Shah, Urja Singhi", { size: 22 })] }),
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, children: [t("Mukesh Patel School of Technology Management & Engineering, NMIMS, Mumbai, India", { size: 20, italics: true })] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [t("Mini project — Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009), AY 2026–27 · Faculty: [Faculty names]", { size: 20, italics: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [t("Mini project — Deep Learning (702AI0C008) and Natural Language Processing (702AI0C009), AY 2026–27 · Faculty: Prof. Abhay Kolhe (Deep Learning) · Prof. Soni Sweta and Prof. Manisha Tiwari (Natural Language Processing)", { size: 20, italics: true })] }),
 );
 
 add(
@@ -325,7 +325,7 @@ add(H1("References"), refs.map((r, i) => new Paragraph({
 })));
 
 const doc = new Document({
-  creator: "[Student names]", title: "Does the Reranker Hear You?",
+  creator: "Arya Shah, Teerth Shah, Urja Singhi", title: "Does the Reranker Hear You?",
   styles: { default: { document: { run: { font: FONT, size: 22 } } } },
   numbering: { config: [{ reference: "bul", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 270 } } } }] }] },
   sections: [{

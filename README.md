@@ -106,8 +106,9 @@ All three parts are complete. Of the six pre-registered Part 3 tests, five were 
 
 ## Team
 
-[Student Name 1] · [Student Name 2] · [Student Name 3] · [Student Name 4]
-Faculty: [Faculty names] — MPSTME, NMIMS Mumbai
+Arya Shah (B112) · Teerth Shah (B113) · Urja Singhi (B144)
+
+Faculty: Prof. Abhay Kolhe (Deep Learning) · Prof. Soni Sweta and Prof. Manisha Tiwari (Natural Language Processing) — MPSTME, NMIMS Mumbai
 
 ## Licence
 

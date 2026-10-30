@@ -6,8 +6,8 @@ rerankers for voice agents.**
 Mini project for **Deep Learning (702AI0C008)** and **Natural Language Processing (702AI0C009)**,
 MPSTME, NMIMS Mumbai, AY 2026–27.
 
-📄 [Research paper](paper/Paper.docx) · 📘 [Project report](paper/Project_Report.docx) ·
-📝 [Pre-registration](paper/PREREGISTRATION.md) · 📚 [Literature review](paper/LITERATURE_REVIEW.md)
+📄 [Research paper (IEEE format, PDF)](paper/Paper_IEEE.pdf) · [LaTeX source](paper/ieee/main.tex) · 📘 [Project report](paper/Project_Report.docx) ·
+📝 Pre-registrations: [Part 3](paper/PREREGISTRATION.md), [Part 4](paper/PREREGISTRATION_PART4.md) · 📚 [Literature review](paper/LITERATURE_REVIEW.md)
 
 ---
 
@@ -38,10 +38,13 @@ Caller ──► ASR ──► transcript ──► BM25 / dense / hybrid search
 | 5 | Misrecognised **content words** (names, nouns, numbers), not function words, drive the loss; in **53–68%** of failures the right passage never reaches the reranker. | Pre-registered tests C4, C5 |
 | 6 | The biggest gains come from outside the reranker: re-ranking a **hybrid** (BM25 + dense) list wins on all three new real-speech test sets (+0.010 to +0.085 nDCG@10), and a **stronger recogniser** (Whisper large-v3-turbo) cuts India-South's loss from 25% to 9%. | Pre-registered test C1; SD-QA, HeySQuAD, SLUE-SQA-5 |
 | 7 | Training on **real** human speech errors did **not** beat training on synthetic (TTS) errors, and was significantly worse on SLUE-SQA-5; the real transcripts were twice as noisy. | Pre-registered test C3 (not supported) |
+| 8 | **Listen Twice** — re-transcribe the call with Whisper prompted by rare words from the passages the first transcript retrieved — cuts the rare-word error rate by 31% and significantly improves real dialectal speech (SD-QA +0.017 nDCG@10; Nigerian +0.030, Indian +0.025), beats a random-word prompt on all three real-speech sets, and costs ~50 ms of GPU time. | Pre-registered Part 4, H1 (SD-QA) and H2 (all sets) |
+| 9 | **Mishear the Corpus** — index the ASR's own mishearings of rare words — is safe for typed queries but gives **no significant gain** and does not beat classic phonetic indexing. | Pre-registered Part 4, H3–H4 (not supported) |
 
 All experiments use three random seeds, paired randomization tests with Holm correction, and
-checkpoint-selection rules fixed before any test result. Part 3 hypotheses were
-[pre-registered](paper/PREREGISTRATION.md) and committed before any Part 3 experiment ran.
+checkpoint-selection rules fixed before any test result. Part 3 and Part 4 hypotheses were
+pre-registered ([Part 3](paper/PREREGISTRATION.md), [Part 4](paper/PREREGISTRATION_PART4.md)) and committed before
+any of their experiments ran.
 
 ## Repository layout
 
@@ -57,9 +60,10 @@ benchmark/                Experiments
   run_bench.py            Evaluation grid (through the production re-ranking stage)
   build_sdqa.py           SD-QA real-speech passage-retrieval benchmark
   part3_data.py           Whisper SD-QA, HeySQuAD, SLUE-SQA-5 and real-vs-synthetic training data
+  part4.py                Part 4: Listen Twice (prompted second ASR pass) and Mishear the Corpus (index expansion)
   analyze*.py             Result tables and significance tests
   error_analysis.py       Which words break, and where the loss happens
-  make_figures.py         Figures used in the paper
+  make_figures*.py        Figures used in the paper (make_figures_ieee.py: IEEE version)
   pipeline*.sh            End-to-end pipelines (Part 1, 2, 3)
   results/                Result tables (Markdown/CSV/JSON) and training logs
 kaggle/                   Runner used to execute the pipelines on Kaggle GPUs
@@ -91,7 +95,8 @@ cd benchmark
 MODE=A ./pipeline_part2.sh; MODE=B ./pipeline_part2.sh   # Part 2: SD-QA, distillation
 MODE=C ./pipeline_part3.sh                         # Part 3 data (then MODE=E, H, S)
 python -I analyze.py; python -I analyze_sdqa.py; python -I analyze_part3.py
-python -I error_analysis.py; python -I make_figures.py
+python -I part4.py sdqa; python -I part4.py heysquad; python -I part4.py slue   # Part 4 (GPU)
+python -I error_analysis.py; python -I analyze_part4.py; python -I make_figures_ieee.py
 ```
 
 Training and large evaluations were run on Kaggle (NVIDIA Tesla T4) with `kaggle/run_on_kaggle.py`.
@@ -100,9 +105,12 @@ reproduced every validation score to four decimal places.
 
 ## Status
 
-All three parts are complete. Of the six pre-registered Part 3 tests, five were supported and one
-(real vs. synthetic training noise) was not; all six are reported in the paper and in
-[`benchmark/results/part3_results.md`](benchmark/results/part3_results.md).
+All four parts are complete. Of the six pre-registered Part 3 tests, five were supported and one
+(real vs. synthetic training noise) was not ([`part3_results.md`](benchmark/results/part3_results.md)).
+Of the twelve pre-registered Part 4 tests, four were supported — Listen Twice beat pass 1 on SD-QA and
+beat the random-prompt control on all three sets — and the eight others were not, including all six
+for Mishear the Corpus ([`part4_results.md`](benchmark/results/part4_results.md)). Every test is reported
+in the paper.
 
 ## Team
 

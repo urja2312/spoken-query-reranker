@@ -89,10 +89,11 @@ class Recognizer:
         else:
             self.model = WhisperModel(model, device="cpu", compute_type="int8", cpu_threads=4)
 
-    def __call__(self, audio: np.ndarray) -> str:
+    def __call__(self, audio: np.ndarray, prompt: str | None = None) -> str:
+        """`prompt` (Part 4, Listen Twice) is Whisper's initial_prompt; None is the pass-1 decode."""
         segments, _ = self.model.transcribe(audio, language="en", beam_size=1,
                                             condition_on_previous_text=False,
-                                            without_timestamps=True)
+                                            without_timestamps=True, initial_prompt=prompt)
         return " ".join(segment.text for segment in segments).strip()
 
 
